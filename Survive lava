@@ -364,6 +364,7 @@ MakeTPButton("Celestial Area", "✨", Color3.fromRGB(15,15,65),  Color3.fromRGB(
 -- Rarity TP
 MakeSection("💎  TP Rarity Brainrot", 90)
 local rarities = {
+    {name="Celestial", icon="✨", bg=Color3.fromRGB(10,40,80),   st=Color3.fromRGB(100,200,255)},
     {name="Godly",     icon="🔴", bg=Color3.fromRGB(120,10,10),  st=Color3.fromRGB(255,80,80)},
     {name="Legendary", icon="🟠", bg=Color3.fromRGB(120,55,0),   st=Color3.fromRGB(255,160,40)},
     {name="Mythic",    icon="🟣", bg=Color3.fromRGB(80,0,140),   st=Color3.fromRGB(180,80,255)},
