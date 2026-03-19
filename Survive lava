@@ -1,49 +1,48 @@
 -- ============================================
 --   SCRIPTER INDONESIA | SURVIVE LAVA BRAINROT
---   DELTA EXECUTOR | FINAL ENGLISH + TP RARITY
+--   DELTA EXECUTOR | SIDEBAR HUB
 --   TikTok: tiktok.com/@scripterindonesia
 -- ============================================
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
-local RootPart = Character:WaitForChild("HumanoidRootPart")
+local Players          = game:GetService("Players")
+local RunService       = game:GetService("RunService")
+local UIS              = game:GetService("UserInputService")
+local TweenService     = game:GetService("TweenService")
+local LocalPlayer      = Players.LocalPlayer
+local Character        = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid         = Character:WaitForChild("Humanoid")
+local RootPart         = Character:WaitForChild("HumanoidRootPart")
 
 local State = {
-    NoClip = false,
-    InfJump = false,
+    NoClip     = false,
+    InfJump    = false,
     RemoveLava = false,
-    AntiKick = false,
-    MenuOpen = true,
+    AntiKick   = false,
+    HubOpen    = false,
 }
 
 -- ============================================
--- ANTI KICK & BAN BYPASS
+-- ANTI KICK & BAN
 -- ============================================
-local OldNamecall
-OldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local Method = getnamecallmethod()
-    if Method == "Kick" and self == LocalPlayer then return end
-    if Method == "FireServer" then
-        local ok, name = pcall(function() return self.Name:lower() end)
-        if ok and (name:find("kick") or name:find("ban") or name:find("report")) then return end
+local OldNC
+OldNC = hookmetamethod(game, "__namecall", function(self, ...)
+    local m = getnamecallmethod()
+    if m == "Kick" and self == LocalPlayer then return end
+    if m == "FireServer" then
+        local ok, n = pcall(function() return self.Name:lower() end)
+        if ok and (n:find("kick") or n:find("ban") or n:find("report")) then return end
     end
-    return OldNamecall(self, ...)
+    return OldNC(self, ...)
 end)
 
 -- ============================================
--- REMOVE LAVA - FOLDER TARGETED
+-- REMOVE LAVA
 -- ============================================
-local LavaFolderNames = {"Lavas", "Lava", "lavas", "lava", "LAVA", "LAVAS"}
+local LavaNames = {"Lavas","Lava","lavas","lava","LAVA","LAVAS"}
 
 local function NukePart(part)
     pcall(function()
-        part.CanTouch = false
-        part.CanCollide = false
-        part.Transparency = 1
+        part.CanTouch = false; part.CanCollide = false; part.Transparency = 1
         for _, c in pairs(part:GetChildren()) do
             if c.ClassName == "TouchTransmitter" then c:Destroy() end
         end
@@ -56,32 +55,28 @@ end
 local function NukeFolder(folder)
     pcall(function()
         for _, child in pairs(folder:GetChildren()) do
-            if child:IsA("BasePart") or child:IsA("MeshPart") or child:IsA("UnionOperation") or child:IsA("SpecialMesh") then
+            if child:IsA("BasePart") or child:IsA("MeshPart") or child:IsA("UnionOperation") then
                 NukePart(child)
             elseif child:IsA("Folder") or child:IsA("Model") then
                 for _, sub in pairs(child:GetDescendants()) do
-                    if sub:IsA("BasePart") or sub:IsA("MeshPart") or sub:IsA("UnionOperation") then
-                        NukePart(sub)
-                    end
+                    if sub:IsA("BasePart") or sub:IsA("MeshPart") or sub:IsA("UnionOperation") then NukePart(sub) end
                 end
             end
         end
     end)
 end
 
-local function FindAndNukeLavaFolders()
-    for _, folderName in ipairs(LavaFolderNames) do
-        local folder = workspace:FindFirstChild(folderName)
-        if folder then NukeFolder(folder) end
+local function ScanLava()
+    for _, n in ipairs(LavaNames) do
+        local f = workspace:FindFirstChild(n)
+        if f then NukeFolder(f) end
     end
     for _, obj in pairs(workspace:GetDescendants()) do
-        local lname = obj.Name:lower()
-        if (lname == "lavas" or lname == "lava") and (obj:IsA("Folder") or obj:IsA("Model")) then
-            NukeFolder(obj)
-        end
+        local ln = obj.Name:lower()
+        if (ln=="lava" or ln=="lavas") and (obj:IsA("Folder") or obj:IsA("Model")) then NukeFolder(obj) end
         if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
-            local parentName = obj.Parent and obj.Parent.Name:lower() or ""
-            if parentName == "lava" or parentName == "lavas" then NukePart(obj) end
+            local pn = obj.Parent and obj.Parent.Name:lower() or ""
+            if pn=="lava" or pn=="lavas" then NukePart(obj) end
         end
     end
 end
@@ -89,115 +84,81 @@ end
 task.spawn(function()
     while true do
         task.wait(0.8)
-        if State.RemoveLava then FindAndNukeLavaFolders() end
+        if State.RemoveLava then ScanLava() end
     end
 end)
 
 workspace.DescendantAdded:Connect(function(obj)
     if not State.RemoveLava then return end
     task.wait(0.05)
-    local parentName = obj.Parent and obj.Parent.Name:lower() or ""
-    if parentName == "lava" or parentName == "lavas" then
-        if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
-            NukePart(obj)
-        end
+    local pn = obj.Parent and obj.Parent.Name:lower() or ""
+    if pn=="lava" or pn=="lavas" then
+        if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then NukePart(obj) end
     end
 end)
 
 RunService.Heartbeat:Connect(function()
     if State.RemoveLava then
         pcall(function()
-            if Humanoid and Humanoid.Health < Humanoid.MaxHealth then
-                Humanoid.Health = Humanoid.MaxHealth
-            end
+            if Humanoid and Humanoid.Health < Humanoid.MaxHealth then Humanoid.Health = Humanoid.MaxHealth end
         end)
     end
-end)
-
--- ============================================
--- NOCLIP
--- ============================================
-RunService.Stepped:Connect(function()
     if State.NoClip and Character then
-        for _, part in pairs(Character:GetDescendants()) do
-            if part:IsA("BasePart") then part.CanCollide = false end
+        for _, p in pairs(Character:GetDescendants()) do
+            if p:IsA("BasePart") then p.CanCollide = false end
         end
     end
 end)
 
--- ============================================
--- INF JUMP
--- ============================================
-UserInputService.JumpRequest:Connect(function()
-    if State.InfJump and Humanoid then
-        Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-    end
+UIS.JumpRequest:Connect(function()
+    if State.InfJump and Humanoid then Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    Character = char
+    Humanoid  = char:WaitForChild("Humanoid")
+    RootPart  = char:WaitForChild("HumanoidRootPart")
 end)
 
 -- ============================================
--- TELEPORT FUNCTION
+-- TELEPORT
 -- ============================================
-local function DoTP(x, y, z, btn, origColor)
+local function DoTP(x, y, z, btn, orig)
     local char = LocalPlayer.Character
     if not char then return end
     local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return end
     root.CFrame = CFrame.new(x, y + 5, z)
-    if btn then
-        btn.BackgroundColor3 = Color3.fromRGB(255, 255, 100)
-        task.delay(0.3, function() btn.BackgroundColor3 = origColor end)
+    if btn and orig then
+        btn.BackgroundColor3 = Color3.fromRGB(255,255,100)
+        task.delay(0.3, function() btn.BackgroundColor3 = orig end)
     end
 end
 
--- ============================================
--- TP TO RARITY BRAINROT
--- ============================================
-local RarityFolders = {
-    {name="Godly",     color=Color3.fromRGB(255,50,50),   stroke=Color3.fromRGB(255,120,120), icon="🔴"},
-    {name="Legendary", color=Color3.fromRGB(180,80,0),    stroke=Color3.fromRGB(255,160,40),  icon="🟠"},
-    {name="Mythic",    color=Color3.fromRGB(100,0,180),   stroke=Color3.fromRGB(180,80,255),  icon="🟣"},
-    {name="Secret",    color=Color3.fromRGB(10,10,60),    stroke=Color3.fromRGB(60,60,255),   icon="🔵"},
-    {name="Epic",      color=Color3.fromRGB(60,0,120),    stroke=Color3.fromRGB(140,40,255),  icon="💜"},
-    {name="Rare",      color=Color3.fromRGB(0,60,130),    stroke=Color3.fromRGB(40,140,255),  icon="🔷"},
-}
-
-local function TPToRarity(rarityName)
-    -- Cari folder rarity di workspace
-    local folder = workspace:FindFirstChild(rarityName, true)
-    if not folder then
-        print("[SI] Folder "..rarityName.." tidak ditemukan!")
-        return
-    end
-    -- Ambil model pertama yang ada di folder
+local function TPToRarity(name, btn, orig)
+    local folder = workspace:FindFirstChild(name, true)
+    if not folder then return end
     for _, model in ipairs(folder:GetChildren()) do
         if model:IsA("Model") then
-            local part = model:FindFirstChild("HumanoidRootPart")
-                or model:FindFirstChildWhichIsA("BasePart")
+            local part = model:FindFirstChild("HumanoidRootPart") or model:FindFirstChildWhichIsA("BasePart")
             if part then
                 local char = LocalPlayer.Character
                 local root = char and char:FindFirstChild("HumanoidRootPart")
                 if root then
-                    root.CFrame = part.CFrame + Vector3.new(0, 5, 0)
-                    print("[SI] TP ke "..rarityName.." > "..model.Name)
+                    root.CFrame = part.CFrame + Vector3.new(0,5,0)
+                    if btn and orig then
+                        btn.BackgroundColor3 = Color3.fromRGB(255,255,100)
+                        task.delay(0.3, function() btn.BackgroundColor3 = orig end)
+                    end
                     return
                 end
             end
         end
     end
-    print("[SI] Tidak ada model di folder "..rarityName)
 end
 
 -- ============================================
--- CHARACTER RESPAWN
--- ============================================
-LocalPlayer.CharacterAdded:Connect(function(char)
-    Character = char
-    Humanoid = char:WaitForChild("Humanoid")
-    RootPart = char:WaitForChild("HumanoidRootPart")
-end)
-
--- ============================================
--- GUI PARENT - DELTA FIX
+-- GUI PARENT
 -- ============================================
 local function GetGuiParent()
     if gethui then return gethui() end
@@ -205,290 +166,238 @@ local function GetGuiParent()
     if ok and cg then return cg end
     return LocalPlayer:WaitForChild("PlayerGui")
 end
-
 local GuiParent = GetGuiParent()
 pcall(function()
-    local old = GuiParent:FindFirstChild("SI_LavaBrainrot")
+    local old = GuiParent:FindFirstChild("SI_Hub")
     if old then old:Destroy() end
 end)
 
 -- ============================================
--- GUI
+-- GUI - SIDEBAR HUB
 -- ============================================
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SI_LavaBrainrot"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.IgnoreGuiInset = true
-ScreenGui.DisplayOrder = 999
-ScreenGui.Parent = GuiParent
+local SG = Instance.new("ScreenGui")
+SG.Name="SI_Hub"; SG.ResetOnSpawn=false
+SG.IgnoreGuiInset=true; SG.DisplayOrder=999
+SG.Parent=GuiParent
 
--- Total height: 36 title + features + tp areas + tp rarity + credit
--- features: 26+18+4*(44)+... = ~250, tp areas: 60+3*46=198, tp rarity: 30+6*44=294, credit: 40
-local FULL_H = 680
+local HUB_W = 250
+local HUB_H = 650 -- tinggi sidebar
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 240, 0, FULL_H)
-MainFrame.Position = UDim2.new(0, 20, 0.02, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-MainFrame.BorderSizePixel = 0
-MainFrame.Parent = ScreenGui
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
-local UIStroke = Instance.new("UIStroke", MainFrame)
-UIStroke.Color = Color3.fromRGB(255, 80, 0)
-UIStroke.Thickness = 1.5
+-- Sidebar Panel (mulai dari luar layar kiri)
+local Hub = Instance.new("Frame", SG)
+Hub.Size            = UDim2.new(0, HUB_W, 0, HUB_H)
+Hub.Position        = UDim2.new(0, -HUB_W, 0.5, -HUB_H/2)
+Hub.BackgroundColor3 = Color3.fromRGB(13,13,18)
+Hub.BorderSizePixel = 0
+Instance.new("UICorner", Hub).CornerRadius = UDim.new(0, 12)
+local HStroke = Instance.new("UIStroke", Hub)
+HStroke.Color = Color3.fromRGB(255,80,0); HStroke.Thickness = 1.5
 
--- Title Bar
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 36)
-TitleBar.BackgroundColor3 = Color3.fromRGB(255, 70, 0)
-TitleBar.BorderSizePixel = 0
-TitleBar.Parent = MainFrame
-Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
+-- Scrollable content inside hub
+local Scroll = Instance.new("ScrollingFrame", Hub)
+Scroll.Size                = UDim2.new(1, 0, 1, 0)
+Scroll.BackgroundTransparency = 1
+Scroll.BorderSizePixel     = 0
+Scroll.ScrollBarThickness  = 3
+Scroll.ScrollBarImageColor3 = Color3.fromRGB(255,80,0)
+Scroll.CanvasSize          = UDim2.new(0, 0, 0, 0) -- akan diupdate
 
-local TitleFix = Instance.new("Frame")
-TitleFix.Size = UDim2.new(1, 0, 0.5, 0)
-TitleFix.Position = UDim2.new(0, 0, 0.5, 0)
-TitleFix.BackgroundColor3 = Color3.fromRGB(255, 70, 0)
-TitleFix.BorderSizePixel = 0
-TitleFix.Parent = TitleBar
+local Layout = Instance.new("UIListLayout", Scroll)
+Layout.SortOrder    = Enum.SortOrder.LayoutOrder
+Layout.Padding      = UDim.new(0, 6)
 
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, -40, 1, 0)
-TitleLabel.Position = UDim2.new(0, 10, 0, 0)
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "🔥 SCRIPTER INDONESIA"
-TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleLabel.TextSize = 13
-TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-TitleLabel.Parent = TitleBar
+local LPad = Instance.new("UIPadding", Scroll)
+LPad.PaddingTop    = UDim.new(0, 10)
+LPad.PaddingLeft   = UDim.new(0, 10)
+LPad.PaddingRight  = UDim.new(0, 10)
+LPad.PaddingBottom = UDim.new(0, 10)
 
-local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Size = UDim2.new(0, 28, 0, 28)
-ToggleBtn.Position = UDim2.new(1, -34, 0, 4)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-ToggleBtn.Text = "−"
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleBtn.TextSize = 16
-ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.BorderSizePixel = 0
-ToggleBtn.Parent = TitleBar
-Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
+-- Update canvas size otomatis
+Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    Scroll.CanvasSize = UDim2.new(0, 0, 0, Layout.AbsoluteContentSize.Y + 20)
+end)
 
--- Content
-local ContentFrame = Instance.new("Frame")
-ContentFrame.Size = UDim2.new(1, 0, 1, -36)
-ContentFrame.Position = UDim2.new(0, 0, 0, 36)
-ContentFrame.BackgroundTransparency = 1
-ContentFrame.Parent = MainFrame
+-- ── TAB BUTTON (tombol geser di tepi kanan sidebar) ──
+local TabBtn = Instance.new("TextButton", SG)
+TabBtn.Size             = UDim2.new(0, 36, 0, 80)
+TabBtn.Position         = UDim2.new(0, 0, 0.5, -40)
+TabBtn.BackgroundColor3 = Color3.fromRGB(255,65,0)
+TabBtn.BorderSizePixel  = 0
+TabBtn.Text             = "🔥"
+TabBtn.TextSize         = 20
+TabBtn.Font             = Enum.Font.GothamBold
+TabBtn.ZIndex           = 20
+Instance.new("UICorner", TabBtn).CornerRadius = UDim.new(0, 8)
+local TabStroke = Instance.new("UIStroke", TabBtn)
+TabStroke.Color = Color3.fromRGB(255,160,60); TabStroke.Thickness = 1.5
 
-local Sub = Instance.new("TextLabel")
-Sub.Size = UDim2.new(1, 0, 0, 20)
-Sub.Position = UDim2.new(0, 0, 0, 5)
-Sub.BackgroundTransparency = 1
-Sub.Text = "Survive Lava Brainrot"
-Sub.TextColor3 = Color3.fromRGB(255, 120, 40)
-Sub.TextSize = 11
-Sub.Font = Enum.Font.Gotham
-Sub.Parent = ContentFrame
+-- Tween sidebar
+local tweenIn  = TweenService:Create(Hub, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0.5, -HUB_H/2)})
+local tweenOut = TweenService:Create(Hub, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In),  {Position = UDim2.new(0, -HUB_W, 0.5, -HUB_H/2)})
+local tweenBtnIn  = TweenService:Create(TabBtn, TweenInfo.new(0.3), {Position = UDim2.new(0, HUB_W, 0.5, -40)})
+local tweenBtnOut = TweenService:Create(TabBtn, TweenInfo.new(0.25), {Position = UDim2.new(0, 0, 0.5, -40)})
 
--- Section Label
-local function MakeSectionLabel(yPos, text)
-    local Lbl = Instance.new("TextLabel")
-    Lbl.Size = UDim2.new(1, -20, 0, 14)
-    Lbl.Position = UDim2.new(0, 10, 0, yPos)
-    Lbl.BackgroundTransparency = 1
-    Lbl.Text = text
-    Lbl.TextColor3 = Color3.fromRGB(255, 120, 40)
-    Lbl.TextSize = 10
-    Lbl.Font = Enum.Font.GothamSemibold
-    Lbl.TextXAlignment = Enum.TextXAlignment.Left
-    Lbl.Parent = ContentFrame
-    local Line = Instance.new("Frame")
-    Line.Size = UDim2.new(1, -20, 0, 1)
-    Line.Position = UDim2.new(0, 10, 0, yPos + 16)
-    Line.BackgroundColor3 = Color3.fromRGB(255, 80, 0)
-    Line.BackgroundTransparency = 0.6
-    Line.BorderSizePixel = 0
-    Line.Parent = ContentFrame
+TabBtn.MouseButton1Click:Connect(function()
+    State.HubOpen = not State.HubOpen
+    if State.HubOpen then
+        tweenIn:Play(); tweenBtnIn:Play()
+    else
+        tweenOut:Play(); tweenBtnOut:Play()
+    end
+end)
+
+-- ============================================
+-- WIDGET BUILDERS
+-- ============================================
+
+-- Header label
+local function MakeHeader(text)
+    local F = Instance.new("Frame")
+    F.Size = UDim2.new(1, 0, 0, 28)
+    F.BackgroundColor3 = Color3.fromRGB(255,65,0)
+    F.BorderSizePixel = 0
+    F.LayoutOrder = 0
+    Instance.new("UICorner", F).CornerRadius = UDim.new(0,6)
+    local L = Instance.new("TextLabel", F)
+    L.Size = UDim2.new(1,0,1,0); L.BackgroundTransparency=1
+    L.Text=text; L.TextColor3=Color3.fromRGB(255,255,255)
+    L.TextSize=11; L.Font=Enum.Font.GothamBold
+    F.Parent = Scroll
+    return F
+end
+
+-- Section divider
+local function MakeSection(text, order)
+    local F = Instance.new("Frame")
+    F.Size = UDim2.new(1,0,0,20); F.BackgroundTransparency=1
+    F.LayoutOrder = order; F.Parent = Scroll
+    local L = Instance.new("TextLabel", F)
+    L.Size=UDim2.new(1,0,1,0); L.BackgroundTransparency=1
+    L.Text=text; L.TextColor3=Color3.fromRGB(255,120,40)
+    L.TextSize=10; L.Font=Enum.Font.GothamSemibold
+    L.TextXAlignment=Enum.TextXAlignment.Left
+    local Line=Instance.new("Frame",F)
+    Line.Size=UDim2.new(1,0,0,1); Line.Position=UDim2.new(0,0,1,-1)
+    Line.BackgroundColor3=Color3.fromRGB(255,80,0)
+    Line.BackgroundTransparency=0.5; Line.BorderSizePixel=0
 end
 
 -- Toggle
-local function CreateToggle(parent, text, yPos, callback)
+local toggleOrder = 10
+local function MakeToggle(label, cb)
     local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(1, -20, 0, 38)
-    Btn.Position = UDim2.new(0, 10, 0, yPos)
-    Btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    Btn.Size = UDim2.new(1,0,0,38)
+    Btn.BackgroundColor3 = Color3.fromRGB(22,22,30)
     Btn.BorderSizePixel = 0
     Btn.Font = Enum.Font.GothamSemibold
     Btn.TextSize = 12
-    Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    Btn.Text = "⬜  " .. text .. "  [OFF]"
+    Btn.TextColor3 = Color3.fromRGB(200,200,200)
+    Btn.Text = "⬜  "..label.."  [OFF]"
     Btn.TextXAlignment = Enum.TextXAlignment.Left
-    Btn.Parent = parent
-    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 7)
-    local Pad = Instance.new("UIPadding", Btn)
-    Pad.PaddingLeft = UDim.new(0, 10)
-    local Active = false
+    Btn.LayoutOrder = toggleOrder
+    toggleOrder = toggleOrder + 1
+    Btn.Parent = Scroll
+    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,7)
+    local Pad = Instance.new("UIPadding", Btn); Pad.PaddingLeft = UDim.new(0,10)
+    local active = false
     Btn.MouseButton1Click:Connect(function()
-        Active = not Active
-        if Active then
-            Btn.BackgroundColor3 = Color3.fromRGB(255, 70, 0)
-            Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            Btn.Text = "✅  " .. text .. "  [ON]"
+        active = not active
+        if active then
+            Btn.BackgroundColor3=Color3.fromRGB(255,65,0)
+            Btn.TextColor3=Color3.fromRGB(255,255,255)
+            Btn.Text="✅  "..label.."  [ON]"
         else
-            Btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-            Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-            Btn.Text = "⬜  " .. text .. "  [OFF]"
+            Btn.BackgroundColor3=Color3.fromRGB(22,22,30)
+            Btn.TextColor3=Color3.fromRGB(200,200,200)
+            Btn.Text="⬜  "..label.."  [OFF]"
         end
-        callback(Active)
-    end)
-    return Btn
-end
-
--- TP Button (area)
-local function MakeTPBtn(label, icon, bgColor, strokeColor, yPos, x, y, z)
-    local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(1, -20, 0, 38)
-    Btn.Position = UDim2.new(0, 10, 0, yPos)
-    Btn.BackgroundColor3 = bgColor
-    Btn.BorderSizePixel = 0
-    Btn.Font = Enum.Font.GothamSemibold
-    Btn.TextSize = 12
-    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Btn.Text = icon .. "  " .. label
-    Btn.TextXAlignment = Enum.TextXAlignment.Left
-    Btn.Parent = ContentFrame
-    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 7)
-    local Pad = Instance.new("UIPadding", Btn)
-    Pad.PaddingLeft = UDim.new(0, 10)
-    local St = Instance.new("UIStroke", Btn)
-    St.Color = strokeColor; St.Thickness = 1
-    Btn.MouseButton1Click:Connect(function()
-        DoTP(x, y, z, Btn, bgColor)
+        cb(active)
     end)
 end
 
--- TP Rarity Button
-local function MakeRarityBtn(rarity, yPos)
+-- TP Button
+local tpOrder = 100
+local function MakeTPButton(label, icon, bg, stroke, cb)
     local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(1, -20, 0, 38)
-    Btn.Position = UDim2.new(0, 10, 0, yPos)
-    Btn.BackgroundColor3 = rarity.color
-    Btn.BorderSizePixel = 0
-    Btn.Font = Enum.Font.GothamSemibold
-    Btn.TextSize = 12
-    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Btn.Text = rarity.icon .. "  TP " .. rarity.name
-    Btn.TextXAlignment = Enum.TextXAlignment.Left
-    Btn.Parent = ContentFrame
-    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 7)
-    local Pad = Instance.new("UIPadding", Btn)
-    Pad.PaddingLeft = UDim.new(0, 10)
-    local St = Instance.new("UIStroke", Btn)
-    St.Color = rarity.stroke; St.Thickness = 1
-    Btn.MouseButton1Click:Connect(function()
-        local orig = rarity.color
-        Btn.BackgroundColor3 = Color3.fromRGB(255, 255, 100)
-        task.delay(0.3, function() Btn.BackgroundColor3 = orig end)
-        TPToRarity(rarity.name)
-    end)
+    Btn.Size=UDim2.new(1,0,0,38)
+    Btn.BackgroundColor3=bg; Btn.BorderSizePixel=0
+    Btn.Font=Enum.Font.GothamSemibold; Btn.TextSize=12
+    Btn.TextColor3=Color3.fromRGB(255,255,255)
+    Btn.Text=icon.."  "..label
+    Btn.TextXAlignment=Enum.TextXAlignment.Left
+    Btn.LayoutOrder=tpOrder; tpOrder=tpOrder+1
+    Btn.Parent=Scroll
+    Instance.new("UICorner",Btn).CornerRadius=UDim.new(0,7)
+    local Pad=Instance.new("UIPadding",Btn); Pad.PaddingLeft=UDim.new(0,10)
+    local St=Instance.new("UIStroke",Btn); St.Color=stroke; St.Thickness=1
+    Btn.MouseButton1Click:Connect(function() cb(Btn, bg) end)
 end
 
 -- ============================================
--- BUILD GUI CONTENT
+-- POPULATE HUB
 -- ============================================
-MakeSectionLabel(26, "⚙️  Features")
-CreateToggle(ContentFrame, "Remove Lava",     44,  function(v) State.RemoveLava = v; if v then FindAndNukeLavaFolders() end end)
-CreateToggle(ContentFrame, "NoClip",          90,  function(v) State.NoClip = v end)
-CreateToggle(ContentFrame, "Inf Jump",        136, function(v) State.InfJump = v end)
-CreateToggle(ContentFrame, "Anti Kick & Ban", 182, function(v) State.AntiKick = v end)
 
-MakeSectionLabel(234, "📍  Area Teleport")
-MakeTPBtn("Back to Base",   "🏠", Color3.fromRGB(40,30,10), Color3.fromRGB(220,170,50), 254, -27.09,  4.26,   -14.08)
-MakeTPBtn("Secret Area",    "🗺️", Color3.fromRGB(20,55,20), Color3.fromRGB(50,200,50),  300, -42.85, 77.60, -1856.56)
-MakeTPBtn("Celestial Area", "✨", Color3.fromRGB(15,15,65), Color3.fromRGB(80,80,255),  346, -54.95,165.86, -2259.29)
+-- Header
+local Hdr = MakeHeader("🔥  SCRIPTER INDONESIA")
+Hdr.LayoutOrder = 0
 
-MakeSectionLabel(398, "💎  TP Rarity Brainrot")
-local rarityY = 418
-for _, rarity in ipairs(RarityFolders) do
-    MakeRarityBtn(rarity, rarityY)
-    rarityY = rarityY + 44
+local SubF = Instance.new("Frame")
+SubF.Size=UDim2.new(1,0,0,18); SubF.BackgroundTransparency=1; SubF.LayoutOrder=1; SubF.Parent=Scroll
+local SubL=Instance.new("TextLabel",SubF)
+SubL.Size=UDim2.new(1,0,1,0); SubL.BackgroundTransparency=1
+SubL.Text="Survive Lava Brainrot"; SubL.TextColor3=Color3.fromRGB(255,120,40)
+SubL.TextSize=10; SubL.Font=Enum.Font.Gotham
+
+-- Features
+MakeSection("⚙️  Features", 2)
+MakeToggle("Remove Lava",     function(v) State.RemoveLava=v; if v then ScanLava() end end)
+MakeToggle("NoClip",          function(v) State.NoClip=v end)
+MakeToggle("Inf Jump",        function(v) State.InfJump=v end)
+MakeToggle("Anti Kick & Ban", function(v) State.AntiKick=v end)
+
+-- Area TP
+MakeSection("📍  Area Teleport", 50)
+MakeTPButton("Back to Base",   "🏠", Color3.fromRGB(40,30,10),  Color3.fromRGB(220,170,50), function(b,o) DoTP(-27.09,   4.26,   -14.08, b, o) end)
+MakeTPButton("Secret Area",    "🗺️", Color3.fromRGB(20,55,20),  Color3.fromRGB(50,200,50),  function(b,o) DoTP(-42.85,  77.60, -1856.56, b, o) end)
+MakeTPButton("Celestial Area", "✨", Color3.fromRGB(15,15,65),  Color3.fromRGB(80,80,255),  function(b,o) DoTP(-54.95, 165.86, -2259.29, b, o) end)
+
+-- Rarity TP
+MakeSection("💎  TP Rarity Brainrot", 90)
+local rarities = {
+    {name="Godly",     icon="🔴", bg=Color3.fromRGB(120,10,10),  st=Color3.fromRGB(255,80,80)},
+    {name="Legendary", icon="🟠", bg=Color3.fromRGB(120,55,0),   st=Color3.fromRGB(255,160,40)},
+    {name="Mythic",    icon="🟣", bg=Color3.fromRGB(80,0,140),   st=Color3.fromRGB(180,80,255)},
+    {name="Secret",    icon="🔵", bg=Color3.fromRGB(10,10,80),   st=Color3.fromRGB(60,100,255)},
+    {name="Epic",      icon="💜", bg=Color3.fromRGB(50,0,100),   st=Color3.fromRGB(140,40,255)},
+    {name="Rare",      icon="🔷", bg=Color3.fromRGB(0,40,100),   st=Color3.fromRGB(40,140,255)},
+}
+for _, r in ipairs(rarities) do
+    MakeTPButton("TP "..r.name, r.icon, r.bg, r.st, function(b, o)
+        TPToRarity(r.name, b, o)
+    end)
 end
 
 -- Credit
-local Cred = Instance.new("TextLabel")
-Cred.Size = UDim2.new(1, 0, 0, 16)
-Cred.Position = UDim2.new(0, 0, 1, -38)
-Cred.BackgroundTransparency = 1
-Cred.Text = "by: scripterindonesia 🇮🇩"
-Cred.TextColor3 = Color3.fromRGB(255, 100, 30)
-Cred.TextSize = 10
-Cred.Font = Enum.Font.GothamBold
-Cred.Parent = ContentFrame
+local CredF = Instance.new("Frame")
+CredF.Size=UDim2.new(1,0,0,34); CredF.BackgroundTransparency=1; CredF.LayoutOrder=999; CredF.Parent=Scroll
+local C1=Instance.new("TextLabel",CredF)
+C1.Size=UDim2.new(1,0,0.5,0); C1.BackgroundTransparency=1
+C1.Text="by: scripterindonesia 🇮🇩"; C1.TextColor3=Color3.fromRGB(255,100,30)
+C1.TextSize=10; C1.Font=Enum.Font.GothamBold
+local C2=Instance.new("TextLabel",CredF)
+C2.Size=UDim2.new(1,0,0.5,0); C2.Position=UDim2.new(0,0,0.5,0); C2.BackgroundTransparency=1
+C2.Text="🎵 tiktok.com/@scripterindonesia"; C2.TextColor3=Color3.fromRGB(130,130,150)
+C2.TextSize=9; C2.Font=Enum.Font.Gotham
 
-local TikTok = Instance.new("TextLabel")
-TikTok.Size = UDim2.new(1, 0, 0, 14)
-TikTok.Position = UDim2.new(0, 0, 1, -22)
-TikTok.BackgroundTransparency = 1
-TikTok.Text = "🎵 tiktok.com/@scripterindonesia"
-TikTok.TextColor3 = Color3.fromRGB(130, 130, 150)
-TikTok.TextSize = 9
-TikTok.Font = Enum.Font.Gotham
-TikTok.Parent = ContentFrame
+-- ============================================
+-- NOTIF
+-- ============================================
+local Pop=Instance.new("TextLabel",SG)
+Pop.Size=UDim2.new(0,270,0,36); Pop.Position=UDim2.new(0.5,-135,0,10)
+Pop.BackgroundColor3=Color3.fromRGB(255,65,0); Pop.TextColor3=Color3.fromRGB(255,255,255)
+Pop.Text="🔥 Scripter Indonesia Loaded!"; Pop.TextSize=13
+Pop.Font=Enum.Font.GothamBold; Pop.BorderSizePixel=0
+Instance.new("UICorner",Pop).CornerRadius=UDim.new(0,8)
+task.delay(3,function() Pop:Destroy() end)
 
--- Drag
-local Dragging, DragInput, DragStart, StartPos
-TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        Dragging = true
-        DragStart = input.Position
-        StartPos = MainFrame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then Dragging = false end
-        end)
-    end
-end)
-TitleBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        DragInput = input
-    end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if input == DragInput and Dragging then
-        local Delta = input.Position - DragStart
-        MainFrame.Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + Delta.X, StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y)
-    end
-end)
-
--- Open/Close
-ToggleBtn.MouseButton1Click:Connect(function()
-    State.MenuOpen = not State.MenuOpen
-    ContentFrame.Visible = State.MenuOpen
-    ToggleBtn.Text = State.MenuOpen and "−" or "+"
-    MainFrame.Size = State.MenuOpen and UDim2.new(0, 240, 0, FULL_H) or UDim2.new(0, 240, 0, 36)
-end)
-
--- Notif
-local Notif = Instance.new("TextLabel")
-Notif.Size = UDim2.new(0, 270, 0, 36)
-Notif.Position = UDim2.new(0.5, -135, 0, 10)
-Notif.BackgroundColor3 = Color3.fromRGB(255, 70, 0)
-Notif.TextColor3 = Color3.fromRGB(255, 255, 255)
-Notif.Text = "🔥 Scripter Indonesia Loaded!"
-Notif.TextSize = 13
-Notif.Font = Enum.Font.GothamBold
-Notif.BorderSizePixel = 0
-Notif.Parent = ScreenGui
-Instance.new("UICorner", Notif).CornerRadius = UDim.new(0, 8)
-task.delay(3, function() Notif:Destroy() end)
-
-print("[SI] Survive Lava Brainrot + TP Rarity Loaded!")
-Notif.Font = Enum.Font.GothamBold
-Notif.BorderSizePixel = 0
-Notif.Parent = ScreenGui
-Instance.new("UICorner", Notif).CornerRadius = UDim.new(0, 8)
-task.delay(3, function() Notif:Destroy() end)
-
-print("[SI] Survive Lava Brainrot + TP Rarity Loaded!")
+print("[SI] Survive Lava Brainrot | Sidebar Hub Loaded!")
